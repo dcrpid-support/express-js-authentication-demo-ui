@@ -16,6 +16,7 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const HOST = process.env.HOST || "127.0.0.1";
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -34,7 +35,7 @@ app.use(cors());
 //   credentials: true,
 // }));
 
-const individual_id_type = {
+const individual_id_type_value = {
 	'PCN': 'VID',
 	'AlyasPSN': 'VID',
 };
@@ -42,15 +43,13 @@ const individual_id_type = {
 app.post('/request/otp/', async (req, res) => {
 	console.log('---- OTP Request (Start) ----');
 	try {
-		const pcn = req.body.individual_id;
+		const { individual_id, individual_id_type, otp_email, otp_phone } = req.body;
 		const transaction_id = '1234567890';
 		const misp_license_key = process.env.TSP_LICENSE_KEY;
 		const partner_id = process.env.PARTNER_ID;
 		const partner_api_key = process.env.API_KEY;
 		const base_url = process.env.BASE_URL;
 		let otp_channel = [];
-		const otp_email = ['1', 'true', 't', 'yes', 'y', 'on'].includes(String(req.body.otp_email).toLowerCase());
-		const otp_phone = ['1', 'true', 't', 'yes', 'y', 'on'].includes(String(req.body.otp_phone).toLowerCase());
 
 		if(!otp_email && !otp_phone) {
 			res.status(500).json({ error: 'OTP channel is required' });
@@ -69,8 +68,8 @@ app.post('/request/otp/', async (req, res) => {
 			version: process.env.VERSION,
 			transactionID: transaction_id,
 			requestTime: get_current_time(),
-			individualId: pcn,
-			individualIdType: individual_id_type[req.body.individual_id_type],
+			individualId: individual_id,
+			individualIdType: individual_id_type_value[individual_id_type],
 			otpChannel: otp_channel,
 		};
 	
@@ -130,16 +129,14 @@ app.post('/request/otp/', async (req, res) => {
 
 app.post('/authenticate', async (req, res) => {
 	try {
-		const request = req.body;
-		const request_time = get_current_time();
-	
-		const pcn = request.pcn;
+		const { individual_id, individual_id_type, is_ekyc, otp_value, demo_value, bio_value } = req.body;
+		console.log(`Demographic Value: ${demo_value}`);
+		const request_time = get_current_time();	
 		const transaction_id = '1234567890';
 		const misp_license_key = process.env.TSP_LICENSE_KEY;
 		const partner_id = process.env.PARTNER_ID;
 		const partner_api_key = process.env.API_KEY;
 		const base_url = process.env.BASE_URL;
-		const is_ekyc = ['1', 'true', 't', 'yes', 'y', 'on'].includes(request.input_ekyc)
 	
 		const ida_certificate_path = `./keys/${partner_id}/${partner_id}-IDAcertificate.cer`;
 		const partner_private_key_path = `./keys/${partner_id}/${partner_id}-partner-private-key.pem`;
@@ -153,18 +150,18 @@ app.post('/authenticate', async (req, res) => {
 			domainUri: base_url,
 			transactionID: transaction_id,
 			requestedAuth: {
-				otp: request.input_otp == 'on',
-				demo: request.input_demo == 'on',
-				bio: request.input_bio == 'on',
+				otp: !!otp_value,
+				demo: !!demo_value,
+				bio: !!bio_value,
 			},
 			consentObtained: true,
-			individualId: request.individual_id,
-			individualIdType: individual_id_type[req.body.individual_id_type],
+			individualId: individual_id,
+			individualIdType: individual_id_type_value[individual_id_type],
 			request: {
 				timestamp: request_time,
-				otp: request.input_otp_value,
-				demographics: JSON.parse(request.input_demo_value),
-				biometrics: JSON.parse(request.input_bio_value),
+				otp: otp_value,
+				demographics: demo_value,
+				biometrics: bio_value,
 			},
 		};
 
@@ -232,6 +229,6 @@ app.post('/authenticate', async (req, res) => {
 	}
 });
 
-app.listen(PORT, () => {
-	console.log(`Server is running at http://localhost:${PORT}`);
+app.listen(PORT, HOST, () => {
+	console.log(`Server is running at http://${HOST}:${PORT}`);
 });
