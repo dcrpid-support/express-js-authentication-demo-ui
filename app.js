@@ -43,26 +43,17 @@ const individual_id_type_value = {
 app.post('/request/otp/', async (req, res) => {
 	console.log('---- OTP Request (Start) ----');
 	try {
-		const { individual_id, individual_id_type, otp_email, otp_phone } = req.body;
+		const { individual_id, individual_id_type, otp_channel } = req.body;
 		const transaction_id = '1234567890';
 		const misp_license_key = process.env.TSP_LICENSE_KEY;
 		const partner_id = process.env.PARTNER_ID;
 		const partner_api_key = process.env.API_KEY;
 		const base_url = process.env.BASE_URL;
-		let otp_channel = [];
 
-		if(!otp_email && !otp_phone) {
+		if(!otp_channel) {
 			res.status(500).json({ error: 'OTP channel is required' });
 		}
 
-		if(otp_email) {
-			otp_channel.push("email");
-		}
-
-		if(otp_phone) {
-			otp_channel.push("phone");
-		}
-	
 		const http_otp_request_body = {
 			id: 'philsys.identity.otp',
 			version: process.env.VERSION,
@@ -130,7 +121,6 @@ app.post('/request/otp/', async (req, res) => {
 app.post('/authenticate', async (req, res) => {
 	try {
 		const { individual_id, individual_id_type, is_ekyc, otp_value, demo_value, bio_value } = req.body;
-		console.log(`Demographic Value: ${demo_value}`);
 		const request_time = get_current_time();	
 		const transaction_id = '1234567890';
 		const misp_license_key = process.env.TSP_LICENSE_KEY;
