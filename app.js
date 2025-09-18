@@ -51,7 +51,9 @@ app.post('/request/otp/', async (req, res) => {
 		const base_url = process.env.BASE_URL;
 
 		if(!otp_channel) {
-			res.status(500).json({ error: 'OTP channel is required' });
+			console.log(`No OTP Channel provided. Please try again`);
+			console.log('---- OTP Request (End) ----');
+			return res.json({ error: 'OTP channel is required' });
 		}
 
 		const http_otp_request_body = {
@@ -104,7 +106,8 @@ app.post('/request/otp/', async (req, res) => {
 			otp_result = otp_response;
 		}
 
-		res.json(otp_result);
+		console.log('---- OTP Request (End) ----');
+		return res.json(otp_result);
 	}
 	catch(error) {
 		console.log(error);
@@ -112,13 +115,13 @@ app.post('/request/otp/', async (req, res) => {
 			error: 'An error occured. Please try again.'
 		}
 
-		res.json(otp_result);
+		console.log('---- OTP Request (End) ----');
+		return res.json(otp_result);
 	}
-
-	console.log('---- OTP Request (End) ----');
 });
 
 app.post('/authenticate', async (req, res) => {
+	console.log('---- Authentication Request (Start) ----');
 	try {
 		const { individual_id, individual_id_type, is_ekyc, otp_value, demo_value, bio_value } = req.body;
 		const request_time = get_current_time();	
@@ -172,6 +175,10 @@ app.post('/authenticate', async (req, res) => {
 			'content-type': 'application/json',
 		}
 
+		console.log(`Authentication URL: ${http_authentication_request_url}\n`);
+		console.log(`Authentication Body: ${JSON.stringify(http_authentication_request_body)}\n`);
+		console.log(`Authentication Body (Request): ${JSON.stringify(http_authentication_request_body_request)}\n`);
+
 		const httpsAgent = new https.Agent({
 			rejectUnauthorized: false
 		});
@@ -183,10 +190,6 @@ app.post('/authenticate', async (req, res) => {
 			agent: httpsAgent,
 		});
 
-		console.log(`Authentication URL: ${http_authentication_request_url}\n`);
-		// console.log(`Authentication Header: ${JSON.stringify(http_authentication_request_header)}\n`);
-		console.log(`Authentication Body: ${JSON.stringify(http_authentication_request_body)}\n`);
-		console.log(`Authentication Body (Request): ${JSON.stringify(http_authentication_request_body_request)}\n`);
 
 		const authentication_response = await response.json();
 
@@ -207,7 +210,8 @@ app.post('/authenticate', async (req, res) => {
 
 		console.log(`Authentication Response: ${JSON.stringify(authentication_result)}`);
 
-		res.json(authentication_result);
+		console.log('---- Authentication Request (End) ----');
+		return res.json(authentication_result);
 	}
 	catch(error) {
 		console.log(error);
@@ -215,8 +219,10 @@ app.post('/authenticate', async (req, res) => {
 			error: 'An error occured. Please try again.'
 		}
 
-		res.json(authentication_result);
+		console.log('---- Authentication Request (End) ----');
+		return res.json(authentication_result);
 	}
+
 });
 
 app.listen(PORT, HOST, () => {

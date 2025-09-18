@@ -1,6 +1,5 @@
 import crypto from 'crypto';
 import fs from 'fs/promises';
-import forge from 'node-forge';
 import dotenv from 'dotenv';
 import path from 'path';
 
@@ -38,7 +37,6 @@ export const get_thumbprint = async (filePath) => {
 
 export const decrypt_response = async (response) => {
     const partner_id = process.env.PARTNER_ID;
-
     const partner_private_key_path = path.join(
         '.',
         'keys',
