@@ -53,10 +53,26 @@ app.post('/request/otp/', async (req, res) => {
 		const partner_api_key = process.env.API_KEY;
 		const base_url = process.env.BASE_URL;
 
+		let errors = [];
+
+		if (!individual_id) {
+			console.log("Error: Individual ID is required.");
+			errors.push({ error: 'Individual ID is required' });
+		}
+
+		if (!individual_id_type) {
+			console.log("Error: Individual ID Type is required.");
+			errors.push({ error: 'Individual ID Type is required' });
+		}
+
 		if(!otp_channel) {
-			console.log(`No OTP Channel provided. Please try again`);
+			console.log(`Error: OTP channel is required.`);
+			errors.push({ error: 'OTP channel is required' });
+		}
+		
+		if (errors.length > 0) {
 			console.log('---- OTP Request (End) ----');
-			return res.json({ error: 'OTP channel is required' });
+			return res.json(errors);
 		}
 
 		otp_transactions[individual_id] = transaction_id;
@@ -140,15 +156,35 @@ app.post('/authenticate', async (req, res) => {
 		const partner_private_key_path = `./keys/${partner_id}/${partner_id}-partner-private-key.pem`;
 		const http_authentication_request_url = `${base_url}/idauthentication/v1/${is_ekyc ? 'kyc' : 'auth'}/${misp_license_key}/${partner_id}/${partner_api_key}`;
 	
-		if(!!otp_value) {
-			if(!transaction_id) {
-				console.log(`No OTP request provided. Please try again`);
-				console.log('---- Authentication Request (End) ----');
-				return res.json({ error: 'OTP request is required' });
-			}
-			else {
-				delete otp_transactions[individual_id];
-			}
+		let errors = [];
+
+		if (!individual_id) {
+			console.log(`Error: Individual ID is required.`);
+        	errors.push({ error: 'Individual ID is required.' });
+		}
+
+		if (!individual_id_type) {
+			console.log(`Error: Individual ID Type is required.`);
+			errors.push({ error: 'Individual ID Type is required.' });
+		}
+
+		if (!otp_value && !demo_value && !bio_value) {
+			console.log(`Error: Individual information is required.`);
+			errors.push({ error: 'Individual information is required.' });
+		}
+
+		if(!!otp_value & !transaction_id) {
+			console.log(`Error: OTP is required.`);
+			errors.push({ error: 'OTP request is required.' });
+		}
+
+		if (errors.length > 0) {
+			console.log('---- Authentication Request (End) ----');
+			return res.json(errors);
+		}
+		
+		if(!errors.length > 0 && !!otp_value) {
+			delete otp_transactions[individual_id];
 		}
 
 		const http_authentication_request_body = {
