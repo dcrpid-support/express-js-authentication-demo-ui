@@ -53,3 +53,7 @@ export const decrypt_response = async (response) => {
 
     return result;
 }
+
+export const create_transaction_id = (len) => {
+    return Math.floor(Math.random() * (10**len));
+}

@@ -6,7 +6,7 @@ import dotenv from 'dotenv';
 import https from 'https';
 import crypto from 'crypto';
 
-import { get_thumbprint, get_current_time, print_hex_binary, decrypt_response } from './include/utils.js';
+import { get_thumbprint, get_current_time, print_hex_binary, decrypt_response, create_transaction_id } from './include/utils.js';
 import { create_signature } from './include/signature.js';
 import { get_authorization } from './include/authorization.js';
 import { symmetric_encrypt, asymmetric_encrypt } from './include/crypto.js';
@@ -40,11 +40,14 @@ const individual_id_type_value = {
 	'AlyasPSN': 'VID',
 };
 
+const otp_transactions = {};
+const transaction_id_length = 10;
+
 app.post('/request/otp/', async (req, res) => {
 	console.log('---- OTP Request (Start) ----');
 	try {
 		const { individual_id, individual_id_type, otp_channel } = req.body;
-		const transaction_id = '1234567890';
+		const transaction_id = `${create_transaction_id(transaction_id_length)}`;
 		const misp_license_key = process.env.TSP_LICENSE_KEY;
 		const partner_id = process.env.PARTNER_ID;
 		const partner_api_key = process.env.API_KEY;
@@ -55,6 +58,8 @@ app.post('/request/otp/', async (req, res) => {
 			console.log('---- OTP Request (End) ----');
 			return res.json({ error: 'OTP channel is required' });
 		}
+
+		otp_transactions[individual_id] = transaction_id;
 
 		const http_otp_request_body = {
 			id: 'philsys.identity.otp',
@@ -125,7 +130,7 @@ app.post('/authenticate', async (req, res) => {
 	try {
 		const { individual_id, individual_id_type, is_ekyc, otp_value, demo_value, bio_value } = req.body;
 		const request_time = get_current_time();	
-		const transaction_id = '1234567890';
+		const transaction_id = !!otp_value ? otp_transactions[individual_id] : `${create_transaction_id(transaction_id_length)}`;
 		const misp_license_key = process.env.TSP_LICENSE_KEY;
 		const partner_id = process.env.PARTNER_ID;
 		const partner_api_key = process.env.API_KEY;
@@ -135,6 +140,17 @@ app.post('/authenticate', async (req, res) => {
 		const partner_private_key_path = `./keys/${partner_id}/${partner_id}-partner-private-key.pem`;
 		const http_authentication_request_url = `${base_url}/idauthentication/v1/${is_ekyc ? 'kyc' : 'auth'}/${misp_license_key}/${partner_id}/${partner_api_key}`;
 	
+		if(!!otp_value) {
+			if(!transaction_id) {
+				console.log(`No OTP request provided. Please try again`);
+				console.log('---- Authentication Request (End) ----');
+				return res.json({ error: 'OTP request is required' });
+			}
+			else {
+				delete otp_transactions[individual_id];
+			}
+		}
+
 		const http_authentication_request_body = {
 			id: `philsys.identity.${is_ekyc ? 'kyc': 'auth'}`,
 			version: process.env.VERSION,
