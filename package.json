@@ -4,10 +4,10 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "start": "dotenv -e .env -- node app.js",
-    "start:dev": "dotenv -e .env.development -- node app.js",
-    "start:staging": "dotenv -e .env.staging -- node app.js",
-    "start:prod": "dotenv -e .env.production -- node app.js"
+    "start": "clear && dotenv -e .env -- node app.js",
+    "start:dev": "clear && dotenv -e .env.development -- node app.js",
+    "start:staging": "clear && dotenv -e .env.staging -- node app.js",
+    "start:prod": "clear && dotenv -e .env.production -- node app.js"
   },
   "keywords": [],
   "author": "",

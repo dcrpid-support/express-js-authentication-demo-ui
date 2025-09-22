@@ -2,10 +2,12 @@ import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { SignJWT, importPKCS8 } from 'jose';
-import { webcrypto } from 'crypto';
 import dotenv from 'dotenv';
 
-globalThis.crypto = webcrypto;
+if (!globalThis.crypto) {
+  globalThis.crypto = require('crypto').webcrypto;
+}
+
 dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
