@@ -55,5 +55,11 @@ export const decrypt_response = async (response) => {
 }
 
 export const create_transaction_id = (len) => {
-    return Math.floor(Math.random() * (10**len));
+    let transaction_number = '';
+    
+    for (let i = 1; i <= len; i++) {
+        transaction_number += Math.floor(Math.random() * 9) + 1;
+    }
+
+    return transaction_number;
 }
