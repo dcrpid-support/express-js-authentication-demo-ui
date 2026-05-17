@@ -3,9 +3,10 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { SignJWT, importPKCS8 } from 'jose';
 import dotenv from 'dotenv';
+import { webcrypto } from 'crypto';
 
 if (!globalThis.crypto) {
-  globalThis.crypto = require('crypto').webcrypto;
+  globalThis.crypto = webcrypto;
 }
 
 dotenv.config();
