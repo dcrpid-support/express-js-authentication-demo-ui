@@ -44,107 +44,111 @@ const otp_transactions = {};
 const transaction_id_length = 10;
 
 app.post('/request/otp/', async (req, res) => {
-	console.log('---- OTP Request (Start) ----');
-	try {
-		const { individual_id, individual_id_type, otp_channel } = req.body;
-		const transaction_id = `${create_transaction_id(transaction_id_length)}`;
-		const misp_license_key = process.env.TSP_LICENSE_KEY;
-		const partner_id = process.env.PARTNER_ID;
-		const partner_api_key = process.env.API_KEY;
-		const base_url = process.env.BASE_URL;
+    console.log('---- OTP Request (Start) ----');
 
-		let errors = [];
+    let errors = [];
 
-		if (!individual_id) {
-			console.log("Error: Individual ID is required.");
-			errors.push({ error: 'Individual ID is required' });
-		}
+    const { individual_id, individual_id_type, otp_channel } = req.body || {};
 
-		if (!individual_id_type) {
-			console.log("Error: Individual ID Type is required.");
-			errors.push({ error: 'Individual ID Type is required' });
-		}
+	if (!individual_id) errors.push({ error: 'Individual ID is required' });
+    if (!individual_id_type) errors.push({ error: 'Individual ID Type is required' });
+    if (!otp_channel) errors.push({ error: 'OTP channel is required' });
 
-		if(!otp_channel) {
-			console.log(`Error: OTP channel is required.`);
-			errors.push({ error: 'OTP channel is required' });
-		}
-		
-		if (errors.length > 0) {
-			console.log('---- OTP Request (End) ----');
-			return res.json(errors);
-		}
+    if (errors.length > 0) {
+        console.log(errors);
+        console.log('---- OTP Request (End) ----');
+        return res.json(errors);
+    }
 
-		otp_transactions[individual_id] = transaction_id;
+    try {
+        const transaction_id = `${create_transaction_id(transaction_id_length)}`;
+        const misp_license_key = process.env.TSP_LICENSE_KEY;
+        const partner_id = process.env.PARTNER_ID;
+        const partner_api_key = process.env.API_KEY;
+        const base_url = process.env.BASE_URL;
 
-		const http_otp_request_body = {
-			id: 'philsys.identity.otp',
-			version: process.env.VERSION,
-			transactionID: transaction_id,
-			requestTime: get_current_time(),
-			individualId: individual_id,
-			individualIdType: individual_id_type_value[individual_id_type],
-			otpChannel: otp_channel,
-		};
-	
-		const partner_private_key_path = `./keys/${partner_id}/${partner_id}-partner-private-key.pem`;
-		const http_otp_url = `${base_url}/idauthentication/v1/otp/${misp_license_key}/${partner_id}/${partner_api_key}`;
-	
-		const http_otp_request_header = {
-			'signature': await create_signature(http_otp_request_body, partner_private_key_path),
-			'authorization': await get_authorization(),
-			'content-type': 'application/json',
-		}
+        otp_transactions[individual_id] = transaction_id;
 
-		console.log(`OTP URL: ${http_otp_url}\n`);
-		console.log(`OTP Request Header: ${JSON.stringify(http_otp_request_header)}\n`);
-		console.log(`OTP Request Body: ${JSON.stringify(http_otp_request_body)}\n`);
-	
-		const httpsAgent = new https.Agent({
-			rejectUnauthorized: false 
-		});
+        const http_otp_request_body = {
+            id: 'philsys.identity.otp',
+            version: process.env.VERSION,
+            transactionID: transaction_id,
+            requestTime: get_current_time(),
+            individualId: individual_id,
+            individualIdType: individual_id_type_value[individual_id_type],
+            otpChannel: otp_channel,
+        };
 
-		const response = await fetch(http_otp_url, {
-			method: 'POST',
-			headers: http_otp_request_header,
-			body: JSON.stringify(http_otp_request_body),
-			agent: httpsAgent,
-		});
+        const partner_private_key_path = `./keys/${partner_id}/${partner_id}-partner-private-key.pem`;
+        const http_otp_url = `${base_url}/idauthentication/v1/otp/${misp_license_key}/${partner_id}/${partner_api_key}`;
 
-		const otp_response = await response.json();
+        const http_otp_request_header = {
+            'signature': await create_signature(http_otp_request_body, partner_private_key_path),
+            'authorization': await get_authorization(),
+            'content-type': 'application/json',
+        };
 
-		let otp_result;
-		if(response.ok && !otp_response['errors'] && !otp_response['error']) {
-			otp_result = await decrypt_response(otp_response);	
-		}
-		else if(!response.ok) {
-			otp_result = {
-				error_code: response.status,
-				error_message: response.statusText,
-			};
-		}
-		else {
-			otp_result = otp_response;
-		}
+        console.log(`OTP URL: ${http_otp_url}`);
+        console.log(`OTP Request Header: ${JSON.stringify(http_otp_request_header)}`);
+        console.log(`OTP Request Body: ${JSON.stringify(http_otp_request_body)}`);
 
-		console.log('---- OTP Request (End) ----');
-		return res.json(otp_result);
-	}
-	catch(error) {
-		console.log(error);
-		const otp_result = {
-			error: 'An error occured. Please try again.'
-		}
+        const httpsAgent = new https.Agent({ rejectUnauthorized: false });
 
-		console.log('---- OTP Request (End) ----');
-		return res.json(otp_result);
-	}
+        const response = await fetch(http_otp_url, {
+            method: 'POST',
+            headers: http_otp_request_header,
+            body: JSON.stringify(http_otp_request_body),
+            agent: httpsAgent,
+        });
+
+        const otp_response = await response.json();
+
+        let otp_result;
+        if (response.ok && !otp_response['errors'] && !otp_response['error']) {
+            otp_result = await decrypt_response(otp_response);
+        } else if (!response.ok) {
+            otp_result = {
+                error_code: response.status,
+                error_message: response.statusText,
+            };
+        } else {
+            otp_result = otp_response;
+        }
+
+        console.log('---- OTP Request (End) ----');
+        return res.json(otp_result);
+    } catch (error) {
+        console.log(error);
+        console.log('---- OTP Request (End) ----');
+        return res.json({ error: 'An error occurred. Please try again.' });
+    }
 });
 
 app.post('/authenticate', async (req, res) => {
 	console.log('---- Authentication Request (Start) ----');
+
+	let errors = [];
+
+	const { individual_id, individual_id_type, is_ekyc, otp_value, demo_value, bio_value } = req.body || {};
+	const transaction_id = !!otp_value ? otp_transactions[individual_id] : `${create_transaction_id(transaction_id_length)}`;
+
+	if (!individual_id) errors.push({ error: 'Individual ID is required.' });
+	if (!individual_id_type) errors.push({ error: 'Individual ID Type is required.' });
+	if (!otp_value && !demo_value && !bio_value) errors.push({ error: 'Individual information is required.' });
+	if (!!otp_value & !transaction_id) errors.push({ error: 'OTP request is required.' });
+
+	if (errors.length > 0) {
+		console.log(errors);
+		console.log('---- Authentication Request (End) ----');
+		return res.json(errors);
+	}
+	
+	if(!errors.length > 0 && !!otp_value) {
+		delete otp_transactions[individual_id];
+	}
+
 	try {
-		const { individual_id, individual_id_type, is_ekyc, otp_value, demo_value, bio_value } = req.body;
+		const { individual_id, individual_id_type, is_ekyc, otp_value, demo_value, bio_value } = req.body || {};
 		const request_time = get_current_time();	
 		const transaction_id = !!otp_value ? otp_transactions[individual_id] : `${create_transaction_id(transaction_id_length)}`;
 		const misp_license_key = process.env.TSP_LICENSE_KEY;
@@ -155,37 +159,6 @@ app.post('/authenticate', async (req, res) => {
 		const ida_certificate_path = `./keys/${partner_id}/${partner_id}-IDAcertificate.cer`;
 		const partner_private_key_path = `./keys/${partner_id}/${partner_id}-partner-private-key.pem`;
 		const http_authentication_request_url = `${base_url}/idauthentication/v1/${is_ekyc ? 'kyc' : 'auth'}/${misp_license_key}/${partner_id}/${partner_api_key}`;
-	
-		let errors = [];
-
-		if (!individual_id) {
-			console.log(`Error: Individual ID is required.`);
-        	errors.push({ error: 'Individual ID is required.' });
-		}
-
-		if (!individual_id_type) {
-			console.log(`Error: Individual ID Type is required.`);
-			errors.push({ error: 'Individual ID Type is required.' });
-		}
-
-		if (!otp_value && !demo_value && !bio_value) {
-			console.log(`Error: Individual information is required.`);
-			errors.push({ error: 'Individual information is required.' });
-		}
-
-		if(!!otp_value & !transaction_id) {
-			console.log(`Error: OTP is required.`);
-			errors.push({ error: 'OTP request is required.' });
-		}
-
-		if (errors.length > 0) {
-			console.log('---- Authentication Request (End) ----');
-			return res.json(errors);
-		}
-		
-		if(!errors.length > 0 && !!otp_value) {
-			delete otp_transactions[individual_id];
-		}
 
 		const http_authentication_request_body = {
 			id: `philsys.identity.${is_ekyc ? 'kyc': 'auth'}`,
